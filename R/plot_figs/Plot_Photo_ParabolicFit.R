@@ -4,10 +4,10 @@ library(rstan); library(brms); library(nls.multstart)
 options(mc.cores = parallel::detectCores()-1)
 set.seed(1); 
 
-dat800 <- read_csv("data/P800.2904.csv")
+dat400 <- read_csv("data/P400.2904.csv")
 dat800 <- read_csv("data/P800.2904.csv")
 
-dat800 <- dat800 %>% 
+dat400 <- dat400 %>% 
   mutate(cc=ifelse(Treat=='c.c',1,0), 
          cw=ifelse(Treat=='c.w',1,0), 
          wc=ifelse(Treat=='w.c',1,0), 
@@ -26,7 +26,7 @@ dat800 <- dat800 %>%
 #*****************************************************************************
 # Fit Parabolic function Photo 400 
 #*****************************************************************************
-np400_2 <- nls_multstart(Photo~ (kopt+k_cw*cw+k_wc_*wc+k_ww*ww) - 
+np400_2 <- nls_multstart(Photo~ (kopt+k_cw*cw+k_wc*wc+k_ww*ww) - 
                            b*(Tk-(Topt+Topt_cw*cw+Topt_wc*wc+Topt_ww*ww))**2, 
                          data = dat400, 
                          iter = 100, 
@@ -36,18 +36,18 @@ np400_2 <- nls_multstart(Photo~ (kopt+k_cw*cw+k_wc_*wc+k_ww*ww) -
                          start_upper = list(kopt = 30,k_cw=0,k_wc=0,k_ww=0, b=0.5, 
                                             Topt=273+50,Topt_cw=1,Topt_wc=1,Topt_ww=1))
 
-summary(np400_2)
+summary(np400_2, c(0.1,0.5,0.9))
 
 set.seed(3)
 bprior <- prior(normal(20,5), nlpar=kopt)+
   prior(normal(0,5), nlpar=kwc)+
   prior(normal(0,5), nlpar=kcw)+
   prior(normal(0,5), nlpar=kww)+
-  prior(normal(0.25,0.25), nlpar=b)+
-  prior(normal(273+25,5), nlpar=Topt, lb=273)+
-  prior(normal(0,1), nlpar=Twc)+
-  prior(normal(0,1), nlpar=Tcw)+
-  prior(normal(0,1), nlpar=Tww)
+  prior(normal(0.25,0.25), nlpar=b, lb=0)+
+  prior(normal(300,10), nlpar=Topt, lb=273)+
+  prior(normal(0,5), nlpar=Twc)+
+  prior(normal(0,5), nlpar=Tcw)+
+  prior(normal(0,5), nlpar=Tww)
 
 f <- bf(Photo~kopt+kcw*cw+kwc*wc+kww*ww-b*(Tk-(Topt+Tcw*cw+Twc*wc+Tww*ww))**2, 
         kopt+kwc+kcw+kww+b+Topt+Twc+Tcw+Tww ~ 1,
@@ -65,16 +65,16 @@ fit_p400 <- brm(f,
                # chains = 3,
                # iter = 250
 )
-summary(fit_p400)
-plot(fit_p400)
-bayes_R2(fit_p400)
 
-sm_p400 <- broom.mixed::tidy(fit_p400, conf.level=0.95, conf.method="HPDinterval")
+summary(fit_p400, prob=0.8)$fixed
+plot(fit_p400,ask = F)
+bayes_R2(fit_p400)
+sm_p400 <- broom.mixed::tidy(fit_p400, conf.level=0.8, conf.method="HPDinterval")
 
 #*****************************************************************************
 # Fit Parabolic function Photo 800 
 #*****************************************************************************
-np800_2 <- nls_multstart(Photo~ (kopt+k_cw*cw+k_wc_*wc+k_ww*ww) - 
+np800_2 <- nls_multstart(Photo~ (kopt+k_cw*cw+k_wc*wc+k_ww*ww) - 
                            b*(Tk-(Topt+Topt_cw*cw+Topt_wc*wc+Topt_ww*ww))**2, 
                          data = dat800, 
                          iter = 100, 
@@ -91,11 +91,11 @@ bprior <- prior(normal(30,5), nlpar=kopt)+
   prior(normal(0,5), nlpar=kwc)+
   prior(normal(0,5), nlpar=kcw)+
   prior(normal(0,5), nlpar=kww)+
-  prior(normal(0.25,0.25), nlpar=b)+
-  prior(normal(273+25,5), nlpar=Topt, lb=273)+
-  prior(normal(0,1), nlpar=Twc)+
-  prior(normal(0,1), nlpar=Tcw)+
-  prior(normal(0,1), nlpar=Tww)
+  prior(normal(0.25,0.25), nlpar=b, lb=0)+
+  prior(normal(305,10), nlpar=Topt, lb=273)+
+  prior(normal(0,5), nlpar=Twc)+
+  prior(normal(0,5), nlpar=Tcw)+
+  prior(normal(0,5), nlpar=Tww)
 
 f <- bf(Photo~kopt+kcw*cw+kwc*wc+kww*ww-b*(Tk-(Topt+Tcw*cw+Twc*wc+Tww*ww))**2, 
         kopt+kwc+kcw+kww+b+Topt+Twc+Tcw+Tww ~ 1,
@@ -113,11 +113,11 @@ fit_p800 <- brm(f,
                 # chains = 3,
                 # iter = 250
 )
-summary(fit_p800)
-plot(fit_p800)
+summary(fit_p800,prob=c(0.8))$fixed
+plot(fit_p800, ask=F)
 bayes_R2(fit_p800)
 
-sm_p800 <- broom.mixed::tidy(fit_p800, conf.level=0.95, conf.method="HPDinterval")
+sm_p800 <- broom.mixed::tidy(fit_p800, conf.level=0.8, conf.method="HPDinterval")
 
 
 
@@ -190,7 +190,7 @@ p1 <- fit_p400 %>%
   labs(y=bquote(paste('P'[400],'(',mu,'mol m'^'-2','s'^'-1',')')),
        x=bquote(paste('Leaf Temperature ('^degree,'C)')))+
   ylim(0,40)+
-  scale_x_continuous(breaks = seq(25,45,by=5), expand = expansion(0,0))+
+  scale_x_continuous(limits=c(25,46), breaks = seq(25,45,by=5), expand = expansion(0,0.1))+
   theme(legend.position = c(0.95,0.95), 
         legend.justification = c(0.95,0.95),
         panel.grid.major = element_blank(),
@@ -265,7 +265,7 @@ p2 <- fit_p400 %>%
   labs(y=bquote(paste('P'[400],'(',mu,'mol m'^'-2','s'^'-1',')')),
        x=bquote(paste('Leaf Temperature ('^degree,'C)')))+
   ylim(0,40)+
-  scale_x_continuous(breaks = seq(25,45,by=5), expand = expansion(0,0))+
+  scale_x_continuous(limits=c(25,46), breaks = seq(25,45,by=5), expand = expansion(0,0.1))+
   theme(legend.position = c(0.95,0.95), 
         legend.justification = c(0.95,0.95),
         panel.grid.major = element_blank(),
@@ -344,7 +344,7 @@ p3 <- fit_p400 %>%
   labs(y=bquote(paste('P'[400],'(',mu,'mol m'^'-2','s'^'-1',')')),
        x=bquote(paste('Leaf Temperature ('^degree,'C)')))+
   ylim(0,40)+
-  scale_x_continuous(breaks = seq(25,45,by=5), expand = expansion(0,0))+
+  scale_x_continuous(limits=c(25,46), breaks = seq(25,45,by=5), expand = expansion(0,0.1))+
   theme(legend.position = c(0.95,0.95), 
         legend.justification = c(0.95,0.95),
         panel.grid.major = element_blank(),
@@ -362,7 +362,7 @@ library(patchwork)
 p1/p2/p3
 
 ggsave(p1/p2/p3,
-  filename = paste0("figures/photo_Topt/p400_parabolicFit_",Sys.Date(),".png"),
+  filename = paste0("figures/photo_Topt/p400_parabolicFit_CI80_",Sys.Date(),".png"),
   width = 120, height=3*100, units='mm')
 
 
@@ -421,7 +421,7 @@ p4 <- fit_p800 %>%
   labs(y=bquote(paste('P'[800],'(',mu,'mol m'^'-2','s'^'-1',')')),
        x=bquote(paste('Leaf Temperature ('^degree,'C)')))+
   scale_y_continuous(position = 'right', limits = c(0,40))+
-  scale_x_continuous(breaks = seq(25,45,by=5), expand = expansion(0,0))+
+  scale_x_continuous(limits=c(25,46), breaks = seq(25,45,by=5), expand = expansion(0,0.1))+
   theme(legend.position = 'none',#c(0.95,0.95), 
         legend.justification = c(0.95,0.95),
         panel.grid.major = element_blank(),
@@ -496,7 +496,7 @@ p5 <- fit_p800 %>%
   labs(y=bquote(paste('P'[800],'(',mu,'mol m'^'-2','s'^'-1',')')),
        x=bquote(paste('Leaf Temperature ('^degree,'C)')))+
   scale_y_continuous(position = 'right', limits = c(0,40))+
-  scale_x_continuous(breaks = seq(25,45,by=5), expand = expansion(0,0))+
+  scale_x_continuous(limits=c(25,46), breaks = seq(25,45,by=5), expand = expansion(0,0.1))+
   theme(legend.position = 'none',#c(0.95,0.95), 
         legend.justification = c(0.95,0.95),
         panel.grid.major = element_blank(),
@@ -575,7 +575,7 @@ p6 <- fit_p800 %>%
   labs(y=bquote(paste('P'[800],'(',mu,'mol m'^'-2','s'^'-1',')')),
        x=bquote(paste('Leaf Temperature ('^degree,'C)')))+
   scale_y_continuous(position = 'right', limits = c(0,40))+
-  scale_x_continuous(breaks = seq(25,45,by=5), expand = expansion(0,0))+
+  scale_x_continuous(limits=c(25,46), breaks = seq(25,45,by=5), expand = expansion(0,0.1))+
   theme(legend.position = 'none',# c(0.95,0.95), 
         legend.justification = c(0.95,0.95),
         panel.grid.major = element_blank(),
@@ -593,15 +593,15 @@ library(patchwork)
 p4/p5/p6
 
 ggsave(p4/p5/p6,
-       filename = paste0("figures/photo_Topt/p800_parabolicFit_",Sys.Date(),".png"),
+       filename = paste0("figures/photo_Topt/p800_parabolicFit_CI80_",Sys.Date(),".png"),
        width = 120, height=3*100, units='mm')
 
 
 
 
 ggsave((p1/p2/p3)|(p4/p5/p6),
-       filename = paste0("figures/photo_Topt/p400_p800_parabolicFit_",Sys.Date(),".png"),
+       filename = paste0("figures/photo_Topt/p400_p800_parabolicFit_CI80_",Sys.Date(),".png"),
        width = 2*120, height=3*100, units='mm')
 ggsave((p1/p2/p3)|(p4/p5/p6),
-       filename = paste0("figures/photo_Topt/p400_p800_parabolicFit_",Sys.Date(),".pdf"),
+       filename = paste0("figures/photo_Topt/p400_p800_parabolicFit_CI80_",Sys.Date(),".pdf"),
        width = 2*120, height=3*100, units='mm')
