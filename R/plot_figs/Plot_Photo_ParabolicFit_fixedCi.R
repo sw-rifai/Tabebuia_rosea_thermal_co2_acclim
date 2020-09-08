@@ -3,31 +3,21 @@ library(rstan); library(brms); library(nls.multstart)
 options(mc.cores = parallel::detectCores()-1)
 set.seed(1); 
 
-dat400 <- read_csv("data/P400.2904.csv")
-dat800 <- read_csv("data/P800.2904.csv")
-
-dat400 <- dat400 %>% 
+dat_fci<-read_csv("data/params_20190124.csv")
+dat_fci <- dat_fci %>% 
+  mutate(Tk = Tleaf+273.15) %>% 
   mutate(cc=ifelse(Treat=='c.c',1,0), 
          cw=ifelse(Treat=='c.w',1,0), 
          wc=ifelse(Treat=='w.c',1,0), 
-         ww=ifelse(Treat=='w.w',1,0)) %>% 
-  mutate(p1_w = ifelse(Treat %in% c("w.c","w.w"), 1,0)) %>% 
-  mutate(p2_w = ifelse(Treat %in% c("c.w","w.w"), 1,0))
+         ww=ifelse(Treat=='w.w',1,0))
 
-dat800 <- dat800 %>% 
-  mutate(cc=ifelse(Treat=='c.c',1,0), 
-         cw=ifelse(Treat=='c.w',1,0), 
-         wc=ifelse(Treat=='w.c',1,0), 
-         ww=ifelse(Treat=='w.w',1,0)) %>% 
-  mutate(p1_w = ifelse(Treat %in% c("w.c","w.w"), 1,0)) %>% 
-  mutate(p2_w = ifelse(Treat %in% c("c.w","w.w"), 1,0))
 
 #*****************************************************************************
-# Fit Parabolic function Photo 400 
+# Fit Parabolic function Photo 270
 #*****************************************************************************
-np400_2 <- nls_multstart(Photo~ (kopt+k_cw*cw+k_wc*wc+k_ww*ww) - 
+np270_2 <- nls_multstart(P270~ (kopt+k_cw*cw+k_wc*wc+k_ww*ww) - 
                            b*(Tk-(Topt+Topt_cw*cw+Topt_wc*wc+Topt_ww*ww))**2, 
-                         data = dat400, 
+                         data = dat_fci, 
                          iter = 100, 
                          supp_errors = 'Y',
                          start_lower = list(kopt = 14,k_cw=-1,k_wc=-1,k_ww=-1, b=0, 
@@ -35,7 +25,7 @@ np400_2 <- nls_multstart(Photo~ (kopt+k_cw*cw+k_wc*wc+k_ww*ww) -
                          start_upper = list(kopt = 30,k_cw=0,k_wc=0,k_ww=0, b=0.5, 
                                             Topt=273+50,Topt_cw=1,Topt_wc=1,Topt_ww=1))
 
-summary(np400_2, c(0.1,0.5,0.9))
+summary(np270_2, c(0.1,0.5,0.9))
 
 set.seed(3)
 bprior <- prior(normal(20,5), nlpar=kopt)+
@@ -48,34 +38,34 @@ bprior <- prior(normal(20,5), nlpar=kopt)+
   prior(normal(0,5), nlpar=Tcw)+
   prior(normal(0,5), nlpar=Tww)
 
-f <- bf(Photo~kopt+kcw*cw+kwc*wc+kww*ww-b*(Tk-(Topt+Tcw*cw+Twc*wc+Tww*ww))**2, 
+f <- bf(P270~kopt+kcw*cw+kwc*wc+kww*ww-b*(Tk-(Topt+Tcw*cw+Twc*wc+Tww*ww))**2, 
         kopt+kwc+kcw+kww+b+Topt+Twc+Tcw+Tww ~ 1,
         nl=TRUE)
 make_stancode(f, prior=bprior, family=gaussian(),
-              data=dat400)
+              data=dat_fci)
 
-fit_p400 <- brm(f,
-               data = dat400, 
-               prior = bprior, 
-               # sample_prior = 'only'
-               algorithm = 'sampling',
-               control = list(adapt_delta=0.99,
-                              max_treedepth=13),
-               # chains = 3,
-               # iter = 250
+fit_p270 <- brm(f,
+                data = dat_fci, 
+                prior = bprior, 
+                # sample_prior = 'only'
+                algorithm = 'sampling',
+                control = list(adapt_delta=0.99,
+                               max_treedepth=13),
+                # chains = 3,
+                # iter = 250
 )
 
-summary(fit_p400, prob=0.8)$fixed
-plot(fit_p400,ask = F)
-bayes_R2(fit_p400)
-sm_p400 <- broom.mixed::tidy(fit_p400, conf.level=0.8, conf.method="HPDinterval")
+summary(fit_p270, prob=0.8)$fixed
+plot(fit_p270,ask = F)
+bayes_R2(fit_p270)
+sm_p270 <- broom.mixed::tidy(fit_p270, conf.level=0.8, conf.method="HPDinterval")
 
 #*****************************************************************************
-# Fit Parabolic function Photo 800 
+# Fit Parabolic function Photo 505 
 #*****************************************************************************
-np800_2 <- nls_multstart(Photo~ (kopt+k_cw*cw+k_wc*wc+k_ww*ww) - 
+np505_2 <- nls_multstart(P505~ (kopt+k_cw*cw+k_wc*wc+k_ww*ww) - 
                            b*(Tk-(Topt+Topt_cw*cw+Topt_wc*wc+Topt_ww*ww))**2, 
-                         data = dat800, 
+                         data = dat505, 
                          iter = 100, 
                          supp_errors = 'Y',
                          start_lower = list(kopt = 14,k_cw=-1,k_wc=-1,k_ww=-1, b=0, 
@@ -83,7 +73,7 @@ np800_2 <- nls_multstart(Photo~ (kopt+k_cw*cw+k_wc*wc+k_ww*ww) -
                          start_upper = list(kopt = 30,k_cw=0,k_wc=0,k_ww=0, b=0.5, 
                                             Topt=273+50,Topt_cw=1,Topt_wc=1,Topt_ww=1))
 
-summary(np800_2)
+summary(np505_2)
 
 set.seed(3)
 bprior <- prior(normal(30,5), nlpar=kopt)+
@@ -96,14 +86,14 @@ bprior <- prior(normal(30,5), nlpar=kopt)+
   prior(normal(0,5), nlpar=Tcw)+
   prior(normal(0,5), nlpar=Tww)
 
-f <- bf(Photo~kopt+kcw*cw+kwc*wc+kww*ww-b*(Tk-(Topt+Tcw*cw+Twc*wc+Tww*ww))**2, 
+f <- bf(P505~kopt+kcw*cw+kwc*wc+kww*ww-b*(Tk-(Topt+Tcw*cw+Twc*wc+Tww*ww))**2, 
         kopt+kwc+kcw+kww+b+Topt+Twc+Tcw+Tww ~ 1,
         nl=TRUE)
 make_stancode(f, prior=bprior, family=gaussian(),
-              data=dat800)
+              data=dat_fci)
 
-fit_p800 <- brm(f,
-                data = dat800, 
+fit_p505 <- brm(f,
+                data = dat_fci, 
                 prior = bprior, 
                 # sample_prior = 'only'
                 algorithm = 'sampling',
@@ -112,12 +102,12 @@ fit_p800 <- brm(f,
                 # chains = 3,
                 # iter = 250
 )
-summary(fit_p800,prob=c(0.8))$fixed
-plot(fit_p800, ask=F)
-bayes_R2(fit_p800)
-prior_summary(fit_p800)
+summary(fit_p505,prob=c(0.8))$fixed
+plot(fit_p505, ask=F)
+bayes_R2(fit_p505)
+prior_summary(fit_p505)
 
-sm_p800 <- broom.mixed::tidy(fit_p800, conf.level=0.8, conf.method="HPDinterval")
+sm_p505 <- broom.mixed::tidy(fit_p505, conf.level=0.8, conf.method="HPDinterval")
 
 
 
@@ -136,10 +126,10 @@ vec_labels <- c("c.c"="Control",
                 "w.w"="Treatment")
 
 #************************************************************************
-# FOR THE TOP ROW of P400 -------------------
+# FOR THE TOP ROW of P270 -------------------
 #************************************************************************
 
-p1 <- fit_p400 %>% 
+p1 <- fit_p270 %>% 
   as.data.frame() %>% 
   sample_n(100) %>% 
   as_tibble() %>% 
@@ -159,26 +149,26 @@ p1 <- fit_p400 %>%
   mutate(Tc=Tk-273.15) %>% 
   ggplot(data=.,aes(Tc, Photo, color=Treat, group=lp_Treat))+
   geom_line(alpha=0.05)+
-  geom_point(data=dat400 %>% 
+  geom_point(data=dat_fci %>% 
                filter(Treat%in%c("c.c","w.w")) %>% 
                mutate(Tc=Tk-273.15), 
-             aes(Tc, Photo,color=Treat),
+             aes(Tc, P270,color=Treat),
              size=4,alpha=0.5,
              inherit.aes = F)+
-  geom_vline(aes(xintercept=filter(sm_p400,term=="Topt_(Intercept)")$estimate-273.15), 
+  geom_vline(aes(xintercept=filter(sm_p270,term=="Topt_(Intercept)")$estimate-273.15), 
              color='blue')+
-  geom_vline(aes(xintercept=filter(sm_p400,term=="Topt_(Intercept)")$conf.low-273.15), 
+  geom_vline(aes(xintercept=filter(sm_p270,term=="Topt_(Intercept)")$conf.low-273.15), 
              color='blue',lty=3)+
-  geom_vline(aes(xintercept=filter(sm_p400,term=="Topt_(Intercept)")$conf.high-273.15), 
+  geom_vline(aes(xintercept=filter(sm_p270,term=="Topt_(Intercept)")$conf.high-273.15), 
              color='blue',lty=3)+
-  geom_vline(aes(xintercept=filter(sm_p400,term=="Topt_(Intercept)")$estimate+
-                   filter(sm_p400,term=="Tww_(Intercept)")$estimate-273.15), 
+  geom_vline(aes(xintercept=filter(sm_p270,term=="Topt_(Intercept)")$estimate+
+                   filter(sm_p270,term=="Tww_(Intercept)")$estimate-273.15), 
              color='red')+
-  geom_vline(aes(xintercept=filter(sm_p400,term=="Topt_(Intercept)")$estimate+
-                   filter(sm_p400,term=="Tww_(Intercept)")$conf.high-273.15), 
+  geom_vline(aes(xintercept=filter(sm_p270,term=="Topt_(Intercept)")$estimate+
+                   filter(sm_p270,term=="Tww_(Intercept)")$conf.high-273.15), 
              color='red',lty=3)+
-  geom_vline(aes(xintercept=filter(sm_p400,term=="Topt_(Intercept)")$estimate+
-                   filter(sm_p400,term=="Tww_(Intercept)")$conf.low-273.15), 
+  geom_vline(aes(xintercept=filter(sm_p270,term=="Topt_(Intercept)")$estimate+
+                   filter(sm_p270,term=="Tww_(Intercept)")$conf.low-273.15), 
              color='red',lty=3)+
   scale_color_manual("",
                      values=c("c.c"='blue', "w.w"='#cf0000'), 
@@ -187,7 +177,7 @@ p1 <- fit_p400 %>%
                               "w.c"="paste(Treatment %->% \" Control\")", 
                               "w.w"="Treatment"))+
   theme_bw()+
-  labs(y=bquote(paste('P'[400],'(',mu,'mol m'^'-2','s'^'-1',')')),
+  labs(y=bquote(paste('P'[270],'(',mu,'mol m'^'-2','s'^'-1',')')),
        x=bquote(paste('Leaf Temperature ('^degree,'C)')))+
   ylim(0,40)+
   scale_x_continuous(limits=c(25,46), breaks = seq(25,45,by=5), expand = expansion(0,0.1))+
@@ -203,9 +193,9 @@ p1 <- fit_p400 %>%
 
 
 #************************************************************************
-# FOR THE MIDDLE ROW of P400 ---------------------
+# FOR THE MIDDLE ROW of P270 ---------------------
 #************************************************************************
-p2 <- fit_p400 %>% 
+p2 <- fit_p270 %>% 
   as.data.frame() %>% 
   sample_n(100) %>% 
   as_tibble() %>% 
@@ -225,44 +215,44 @@ p2 <- fit_p400 %>%
   mutate(Tc=Tk-273.15) %>% 
   ggplot(data=.,aes(Tc, Photo, color=Treat, group=lp_Treat))+
   geom_line(alpha=0.05)+
-  geom_point(data=dat400 %>% 
+  geom_point(data=dat_fci %>% 
                filter(Treat%in%c("c.c")) %>% 
                mutate(Tc=Tk-273.15), 
-             aes(Tc, Photo,color=Treat),
+             aes(Tc, P270,color=Treat),
              size=4,alpha=0.5,
              inherit.aes = F)+
-  geom_point(data=dat400 %>% 
+  geom_point(data=dat_fci %>% 
                filter(Treat%in%c("c.w")) %>% 
                mutate(Tc=Tk-273.15), 
-             aes(Tc, Photo,color=Treat),
+             aes(Tc, P270,color=Treat),
              size=4,alpha=0.5,
              inherit.aes = F,shape=1)+
-  geom_vline(aes(xintercept=filter(sm_p400,term=="Topt_(Intercept)")$estimate-273.15), 
+  geom_vline(aes(xintercept=filter(sm_p270,term=="Topt_(Intercept)")$estimate-273.15), 
              color='blue')+
-  geom_vline(aes(xintercept=filter(sm_p400,term=="Topt_(Intercept)")$conf.low-273.15), 
+  geom_vline(aes(xintercept=filter(sm_p270,term=="Topt_(Intercept)")$conf.low-273.15), 
              color='blue',lty=3)+
-  geom_vline(aes(xintercept=filter(sm_p400,term=="Topt_(Intercept)")$conf.high-273.15), 
+  geom_vline(aes(xintercept=filter(sm_p270,term=="Topt_(Intercept)")$conf.high-273.15), 
              color='blue',lty=3)+
-  geom_vline(aes(xintercept=filter(sm_p400,term=="Topt_(Intercept)")$estimate+
-                   filter(sm_p400,term=="Tcw_(Intercept)")$estimate-273.15), 
+  geom_vline(aes(xintercept=filter(sm_p270,term=="Topt_(Intercept)")$estimate+
+                   filter(sm_p270,term=="Tcw_(Intercept)")$estimate-273.15), 
              color='red')+
-  geom_vline(aes(xintercept=filter(sm_p400,term=="Topt_(Intercept)")$estimate+
-                   filter(sm_p400,term=="Tcw_(Intercept)")$conf.high-273.15), 
+  geom_vline(aes(xintercept=filter(sm_p270,term=="Topt_(Intercept)")$estimate+
+                   filter(sm_p270,term=="Tcw_(Intercept)")$conf.high-273.15), 
              color='red',lty=3)+
-  geom_vline(aes(xintercept=filter(sm_p400,term=="Topt_(Intercept)")$estimate+
-                   filter(sm_p400,term=="Tcw_(Intercept)")$conf.low-273.15), 
+  geom_vline(aes(xintercept=filter(sm_p270,term=="Topt_(Intercept)")$estimate+
+                   filter(sm_p270,term=="Tcw_(Intercept)")$conf.low-273.15), 
              color='red',lty=3)+
   scale_color_manual("", 
                      values=c("blue","red"), 
                      breaks=c("c.c","c.w"),
                      labels=c("Control",
                               sprintf('Control\u2192Treatment')
-                              ),
+                     ),
                      guide=guide_legend(override.aes = list(shape=c(20,1), 
                                                             size=c(6,3)))
   )+
   theme_bw()+
-  labs(y=bquote(paste('P'[400],'(',mu,'mol m'^'-2','s'^'-1',')')),
+  labs(y=bquote(paste('P'[270],'(',mu,'mol m'^'-2','s'^'-1',')')),
        x=bquote(paste('Leaf Temperature ('^degree,'C)')))+
   ylim(0,40)+
   scale_x_continuous(limits=c(25,46), breaks = seq(25,45,by=5), expand = expansion(0,0.1))+
@@ -278,9 +268,9 @@ p2 <- fit_p400 %>%
 
 
 #************************************************************************
-# FOR THE BOTTOM ROW of P400 -------------------------
+# FOR THE BOTTOM ROW of P270 -------------------------
 #************************************************************************
-p3 <- fit_p400 %>% 
+p3 <- fit_p270 %>% 
   as.data.frame() %>% 
   sample_n(100) %>% 
   as_tibble() %>% 
@@ -300,35 +290,35 @@ p3 <- fit_p400 %>%
   mutate(Tc=Tk-273.15) %>% 
   ggplot(data=.,aes(Tc, Photo, color=Treat, group=lp_Treat))+
   geom_line(alpha=0.05)+
-  geom_point(data=dat400 %>% 
+  geom_point(data=dat_fci %>% 
                filter(Treat%in%c("w.w")) %>% 
                mutate(Tc=Tk-273.15), 
-             aes(Tc, Photo,color=Treat),
+             aes(Tc, P270,color=Treat),
              size=5,alpha=0.5,
              inherit.aes = F, pch=20)+
-  geom_point(data=dat400 %>% 
+  geom_point(data=dat_fci %>% 
                filter(Treat%in%c("w.c")) %>% 
                mutate(Tc=Tk-273.15), 
-             aes(Tc, Photo,color=Treat),
+             aes(Tc, P270,color=Treat),
              size=4,alpha=0.5,
              inherit.aes = F, pch=1)+
-  geom_vline(aes(xintercept=filter(sm_p400,term=="Topt_(Intercept)")$estimate+
-                   filter(sm_p400,term=="Tww_(Intercept)")$estimate-273.15), 
+  geom_vline(aes(xintercept=filter(sm_p270,term=="Topt_(Intercept)")$estimate+
+                   filter(sm_p270,term=="Tww_(Intercept)")$estimate-273.15), 
              color='red')+
-  geom_vline(aes(xintercept=filter(sm_p400,term=="Topt_(Intercept)")$estimate+
-                   filter(sm_p400,term=="Tww_(Intercept)")$conf.high-273.15), 
+  geom_vline(aes(xintercept=filter(sm_p270,term=="Topt_(Intercept)")$estimate+
+                   filter(sm_p270,term=="Tww_(Intercept)")$conf.high-273.15), 
              color='red',lty=3)+
-  geom_vline(aes(xintercept=filter(sm_p400,term=="Topt_(Intercept)")$estimate+
-                   filter(sm_p400,term=="Tww_(Intercept)")$conf.low-273.15), 
+  geom_vline(aes(xintercept=filter(sm_p270,term=="Topt_(Intercept)")$estimate+
+                   filter(sm_p270,term=="Tww_(Intercept)")$conf.low-273.15), 
              color='red',lty=3)+
-  geom_vline(aes(xintercept=filter(sm_p400,term=="Topt_(Intercept)")$estimate+
-                   filter(sm_p400,term=="Twc_(Intercept)")$estimate-273.15), 
+  geom_vline(aes(xintercept=filter(sm_p270,term=="Topt_(Intercept)")$estimate+
+                   filter(sm_p270,term=="Twc_(Intercept)")$estimate-273.15), 
              color='blue')+
-  geom_vline(aes(xintercept=filter(sm_p400,term=="Topt_(Intercept)")$estimate+
-                   filter(sm_p400,term=="Twc_(Intercept)")$conf.high-273.15), 
+  geom_vline(aes(xintercept=filter(sm_p270,term=="Topt_(Intercept)")$estimate+
+                   filter(sm_p270,term=="Twc_(Intercept)")$conf.high-273.15), 
              color='blue',lty=3)+
-  geom_vline(aes(xintercept=filter(sm_p400,term=="Topt_(Intercept)")$estimate+
-                   filter(sm_p400,term=="Twc_(Intercept)")$conf.low-273.15), 
+  geom_vline(aes(xintercept=filter(sm_p270,term=="Topt_(Intercept)")$estimate+
+                   filter(sm_p270,term=="Twc_(Intercept)")$conf.low-273.15), 
              color='blue',lty=3)+
   scale_color_manual("", 
                      values=c("red","blue"), 
@@ -336,12 +326,12 @@ p3 <- fit_p400 %>%
                      labels=c("Treatment",
                               sprintf('Treatment\u2192Control')
                      ), 
-               guide=guide_legend(override.aes = list(shape=c(20,1), 
-                                                      size=c(6,3)))
+                     guide=guide_legend(override.aes = list(shape=c(20,1), 
+                                                            size=c(6,3)))
                      # parse("paste(Control %->% \" Treatment\")"))
   )+
   theme_bw()+
-  labs(y=bquote(paste('P'[400],'(',mu,'mol m'^'-2','s'^'-1',')')),
+  labs(y=bquote(paste('P'[270],'(',mu,'mol m'^'-2','s'^'-1',')')),
        x=bquote(paste('Leaf Temperature ('^degree,'C)')))+
   ylim(0,40)+
   scale_x_continuous(limits=c(25,46), breaks = seq(25,45,by=5), expand = expansion(0,0.1))+
@@ -362,15 +352,15 @@ library(patchwork)
 p1/p2/p3
 
 ggsave(p1/p2/p3,
-  filename = paste0("figures/photo_Topt/p400_parabolicFit_CI80_",Sys.Date(),".png"),
-  width = 120, height=3*100, units='mm')
+       filename = paste0("figures/photo_Topt/p270_parabolicFit_CI80_",Sys.Date(),".png"),
+       width = 120, height=3*100, units='mm')
 
 
 #************************************************************************
-# FOR THE TOP ROW of P800 --------------------------------------
+# FOR THE TOP ROW of P505 --------------------------------------
 #************************************************************************
 
-p4 <- fit_p800 %>% 
+p4 <- fit_p505 %>% 
   as.data.frame() %>% 
   sample_n(100) %>% 
   as_tibble() %>% 
@@ -390,26 +380,26 @@ p4 <- fit_p800 %>%
   mutate(Tc=Tk-273.15) %>% 
   ggplot(data=.,aes(Tc, Photo, color=Treat, group=lp_Treat))+
   geom_line(alpha=0.05)+
-  geom_point(data=dat800 %>% 
+  geom_point(data=dat_fci %>% 
                filter(Treat%in%c("c.c","w.w")) %>% 
                mutate(Tc=Tk-273.15), 
-             aes(Tc, Photo,color=Treat),
+             aes(Tc, P505,color=Treat),
              size=4,alpha=0.5,
              inherit.aes = F)+
-  geom_vline(aes(xintercept=filter(sm_p800,term=="Topt_(Intercept)")$estimate-273.15), 
+  geom_vline(aes(xintercept=filter(sm_p505,term=="Topt_(Intercept)")$estimate-273.15), 
              color='blue')+
-  geom_vline(aes(xintercept=filter(sm_p800,term=="Topt_(Intercept)")$conf.low-273.15), 
+  geom_vline(aes(xintercept=filter(sm_p505,term=="Topt_(Intercept)")$conf.low-273.15), 
              color='blue',lty=3)+
-  geom_vline(aes(xintercept=filter(sm_p800,term=="Topt_(Intercept)")$conf.high-273.15), 
+  geom_vline(aes(xintercept=filter(sm_p505,term=="Topt_(Intercept)")$conf.high-273.15), 
              color='blue',lty=3)+
-  geom_vline(aes(xintercept=filter(sm_p800,term=="Topt_(Intercept)")$estimate+
-                   filter(sm_p800,term=="Tww_(Intercept)")$estimate-273.15), 
+  geom_vline(aes(xintercept=filter(sm_p505,term=="Topt_(Intercept)")$estimate+
+                   filter(sm_p505,term=="Tww_(Intercept)")$estimate-273.15), 
              color='red')+
-  geom_vline(aes(xintercept=filter(sm_p800,term=="Topt_(Intercept)")$estimate+
-                   filter(sm_p800,term=="Tww_(Intercept)")$conf.high-273.15), 
+  geom_vline(aes(xintercept=filter(sm_p505,term=="Topt_(Intercept)")$estimate+
+                   filter(sm_p505,term=="Tww_(Intercept)")$conf.high-273.15), 
              color='red',lty=3)+
-  geom_vline(aes(xintercept=filter(sm_p800,term=="Topt_(Intercept)")$estimate+
-                   filter(sm_p800,term=="Tww_(Intercept)")$conf.low-273.15), 
+  geom_vline(aes(xintercept=filter(sm_p505,term=="Topt_(Intercept)")$estimate+
+                   filter(sm_p505,term=="Tww_(Intercept)")$conf.low-273.15), 
              color='red',lty=3)+
   scale_color_manual("",
                      values=c("c.c"='blue', "w.w"='#cf0000'), 
@@ -418,7 +408,7 @@ p4 <- fit_p800 %>%
                               "w.c"="paste(Treatment %->% \" Control\")", 
                               "w.w"="Treatment"))+
   theme_bw()+
-  labs(y=bquote(paste('P'[800],'(',mu,'mol m'^'-2','s'^'-1',')')),
+  labs(y=bquote(paste('P'[505],'(',mu,'mol m'^'-2','s'^'-1',')')),
        x=bquote(paste('Leaf Temperature ('^degree,'C)')))+
   scale_y_continuous(position = 'right', limits = c(0,40))+
   scale_x_continuous(limits=c(25,46), breaks = seq(25,45,by=5), expand = expansion(0,0.1))+
@@ -434,9 +424,9 @@ p4 <- fit_p800 %>%
 
 
 #************************************************************************
-# FOR THE MIDDLE ROW of P800 ----------------------
+# FOR THE MIDDLE ROW of P505 ----------------------
 #************************************************************************
-p5 <- fit_p800 %>% 
+p5 <- fit_p505 %>% 
   as.data.frame() %>% 
   sample_n(100) %>% 
   as_tibble() %>% 
@@ -456,32 +446,32 @@ p5 <- fit_p800 %>%
   mutate(Tc=Tk-273.15) %>% 
   ggplot(data=.,aes(Tc, Photo, color=Treat, group=lp_Treat))+
   geom_line(alpha=0.05)+
-  geom_point(data=dat800 %>% 
+  geom_point(data=dat_fci %>% 
                filter(Treat%in%c("c.c")) %>% 
                mutate(Tc=Tk-273.15), 
-             aes(Tc, Photo,color=Treat),
+             aes(Tc, P505,color=Treat),
              size=4,alpha=0.5,
              inherit.aes = F)+
-  geom_point(data=dat800 %>% 
+  geom_point(data=dat_fci %>% 
                filter(Treat%in%c("c.w")) %>% 
                mutate(Tc=Tk-273.15), 
-             aes(Tc, Photo,color=Treat),
+             aes(Tc, P505,color=Treat),
              size=4,alpha=0.5,
              inherit.aes = F,shape=1)+
-  geom_vline(aes(xintercept=filter(sm_p800,term=="Topt_(Intercept)")$estimate-273.15), 
+  geom_vline(aes(xintercept=filter(sm_p505,term=="Topt_(Intercept)")$estimate-273.15), 
              color='blue')+
-  geom_vline(aes(xintercept=filter(sm_p800,term=="Topt_(Intercept)")$conf.low-273.15), 
+  geom_vline(aes(xintercept=filter(sm_p505,term=="Topt_(Intercept)")$conf.low-273.15), 
              color='blue',lty=3)+
-  geom_vline(aes(xintercept=filter(sm_p800,term=="Topt_(Intercept)")$conf.high-273.15), 
+  geom_vline(aes(xintercept=filter(sm_p505,term=="Topt_(Intercept)")$conf.high-273.15), 
              color='blue',lty=3)+
-  geom_vline(aes(xintercept=filter(sm_p800,term=="Topt_(Intercept)")$estimate+
-                   filter(sm_p800,term=="Tcw_(Intercept)")$estimate-273.15), 
+  geom_vline(aes(xintercept=filter(sm_p505,term=="Topt_(Intercept)")$estimate+
+                   filter(sm_p505,term=="Tcw_(Intercept)")$estimate-273.15), 
              color='red')+
-  geom_vline(aes(xintercept=filter(sm_p800,term=="Topt_(Intercept)")$estimate+
-                   filter(sm_p800,term=="Tcw_(Intercept)")$conf.high-273.15), 
+  geom_vline(aes(xintercept=filter(sm_p505,term=="Topt_(Intercept)")$estimate+
+                   filter(sm_p505,term=="Tcw_(Intercept)")$conf.high-273.15), 
              color='red',lty=3)+
-  geom_vline(aes(xintercept=filter(sm_p800,term=="Topt_(Intercept)")$estimate+
-                   filter(sm_p800,term=="Tcw_(Intercept)")$conf.low-273.15), 
+  geom_vline(aes(xintercept=filter(sm_p505,term=="Topt_(Intercept)")$estimate+
+                   filter(sm_p505,term=="Tcw_(Intercept)")$conf.low-273.15), 
              color='red',lty=3)+
   scale_color_manual("", 
                      values=c("blue","red"), 
@@ -493,7 +483,7 @@ p5 <- fit_p800 %>%
                                                             size=c(6,3)))
   )+
   theme_bw()+
-  labs(y=bquote(paste('P'[800],'(',mu,'mol m'^'-2','s'^'-1',')')),
+  labs(y=bquote(paste('P'[505],'(',mu,'mol m'^'-2','s'^'-1',')')),
        x=bquote(paste('Leaf Temperature ('^degree,'C)')))+
   scale_y_continuous(position = 'right', limits = c(0,40))+
   scale_x_continuous(limits=c(25,46), breaks = seq(25,45,by=5), expand = expansion(0,0.1))+
@@ -509,9 +499,9 @@ p5 <- fit_p800 %>%
 
 
 #************************************************************************
-# FOR THE BOTTOM ROW of P800 -----------------------------
+# FOR THE BOTTOM ROW of P505 -----------------------------
 #************************************************************************
-p6 <- fit_p800 %>% 
+p6 <- fit_p505 %>% 
   as.data.frame() %>% 
   sample_n(100) %>% 
   as_tibble() %>% 
@@ -531,35 +521,35 @@ p6 <- fit_p800 %>%
   mutate(Tc=Tk-273.15) %>% 
   ggplot(data=.,aes(Tc, Photo, color=Treat, group=lp_Treat))+
   geom_line(alpha=0.05)+
-  geom_point(data=dat800 %>% 
+  geom_point(data=dat_fci %>% 
                filter(Treat%in%c("w.w")) %>% 
                mutate(Tc=Tk-273.15), 
-             aes(Tc, Photo,color=Treat),
+             aes(Tc, P505,color=Treat),
              size=5,alpha=0.5,
              inherit.aes = F, pch=20)+
-  geom_point(data=dat800 %>% 
+  geom_point(data=dat_fci %>% 
                filter(Treat%in%c("w.c")) %>% 
                mutate(Tc=Tk-273.15), 
-             aes(Tc, Photo,color=Treat),
+             aes(Tc, P505,color=Treat),
              size=4,alpha=0.5,
              inherit.aes = F, pch=1)+
-  geom_vline(aes(xintercept=filter(sm_p800,term=="Topt_(Intercept)")$estimate+
-                   filter(sm_p800,term=="Tww_(Intercept)")$estimate-273.15), 
+  geom_vline(aes(xintercept=filter(sm_p505,term=="Topt_(Intercept)")$estimate+
+                   filter(sm_p505,term=="Tww_(Intercept)")$estimate-273.15), 
              color='red')+
-  geom_vline(aes(xintercept=filter(sm_p800,term=="Topt_(Intercept)")$estimate+
-                   filter(sm_p800,term=="Tww_(Intercept)")$conf.high-273.15), 
+  geom_vline(aes(xintercept=filter(sm_p505,term=="Topt_(Intercept)")$estimate+
+                   filter(sm_p505,term=="Tww_(Intercept)")$conf.high-273.15), 
              color='red',lty=3)+
-  geom_vline(aes(xintercept=filter(sm_p800,term=="Topt_(Intercept)")$estimate+
-                   filter(sm_p800,term=="Tww_(Intercept)")$conf.low-273.15), 
+  geom_vline(aes(xintercept=filter(sm_p505,term=="Topt_(Intercept)")$estimate+
+                   filter(sm_p505,term=="Tww_(Intercept)")$conf.low-273.15), 
              color='red',lty=3)+
-  geom_vline(aes(xintercept=filter(sm_p800,term=="Topt_(Intercept)")$estimate+
-                   filter(sm_p800,term=="Twc_(Intercept)")$estimate-273.15), 
+  geom_vline(aes(xintercept=filter(sm_p505,term=="Topt_(Intercept)")$estimate+
+                   filter(sm_p505,term=="Twc_(Intercept)")$estimate-273.15), 
              color='blue')+
-  geom_vline(aes(xintercept=filter(sm_p800,term=="Topt_(Intercept)")$estimate+
-                   filter(sm_p800,term=="Twc_(Intercept)")$conf.high-273.15), 
+  geom_vline(aes(xintercept=filter(sm_p505,term=="Topt_(Intercept)")$estimate+
+                   filter(sm_p505,term=="Twc_(Intercept)")$conf.high-273.15), 
              color='blue',lty=3)+
-  geom_vline(aes(xintercept=filter(sm_p800,term=="Topt_(Intercept)")$estimate+
-                   filter(sm_p800,term=="Twc_(Intercept)")$conf.low-273.15), 
+  geom_vline(aes(xintercept=filter(sm_p505,term=="Topt_(Intercept)")$estimate+
+                   filter(sm_p505,term=="Twc_(Intercept)")$conf.low-273.15), 
              color='blue',lty=3)+
   scale_color_manual("", 
                      values=c("red","blue"), 
@@ -572,7 +562,7 @@ p6 <- fit_p800 %>%
                      # parse("paste(Control %->% \" Treatment\")"))
   )+
   theme_bw()+
-  labs(y=bquote(paste('P'[800],'(',mu,'mol m'^'-2','s'^'-1',')')),
+  labs(y=bquote(paste('P'[505],'(',mu,'mol m'^'-2','s'^'-1',')')),
        x=bquote(paste('Leaf Temperature ('^degree,'C)')))+
   scale_y_continuous(position = 'right', limits = c(0,40))+
   scale_x_continuous(limits=c(25,46), breaks = seq(25,45,by=5), expand = expansion(0,0.1))+
@@ -593,15 +583,15 @@ library(patchwork)
 p4/p5/p6
 
 ggsave(p4/p5/p6,
-       filename = paste0("figures/photo_Topt/p800_parabolicFit_CI80_",Sys.Date(),".png"),
+       filename = paste0("figures/photo_Topt/p505_parabolicFit_CI80_",Sys.Date(),".png"),
        width = 120, height=3*100, units='mm')
 
 
 
 
 ggsave((p1/p2/p3)|(p4/p5/p6),
-       filename = paste0("figures/photo_Topt/p400_p800_parabolicFit_CI80_",Sys.Date(),".png"),
+       filename = paste0("figures/photo_Topt/p270_p505_parabolicFit_CI80_",Sys.Date(),".png"),
        width = 2*120, height=3*100, units='mm')
 ggsave((p1/p2/p3)|(p4/p5/p6),
-       filename = paste0("figures/photo_Topt/p400_p800_parabolicFit_CI80_",Sys.Date(),".pdf"),
+       filename = paste0("figures/photo_Topt/p270_p505_parabolicFit_CI80_",Sys.Date(),".pdf"),
        width = 2*120, height=3*100, units='mm')
