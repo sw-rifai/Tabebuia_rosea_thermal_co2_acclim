@@ -2,7 +2,7 @@ library(tidyverse); library(bayesplot);
 library(rstan); library(brms); library(nls.multstart)
 options(mc.cores = parallel::detectCores()-1)
 set.seed(1); 
-
+ 
 dat_fci<-read_csv("data/params_20190124.csv")
 dat_fci <- dat_fci %>% 
   mutate(Tk = Tleaf+273.15) %>% 
@@ -36,7 +36,7 @@ f <- bf(P270~(a+acw*cw+awc*wc+aww*ww)*(Tk+d)*
         nl=TRUE)
 make_stancode(f, prior=bprior, family=gaussian(),
               data=dat_fci)
-fit_p270 <- brm(f,
+ricker_p270 <- brm(f,
               data = dat_fci, 
               prior = bprior, 
               # sample_prior = 'only'
@@ -46,31 +46,32 @@ fit_p270 <- brm(f,
               chains = 4,
               iter = 2000
 )
-summary(fit_p270)
-summary(fit_p270, prob=0.8)$fixed
-plot(fit_p270,ask = F)
-bayes_R2(fit_p270)
-sm_p270 <- broom.mixed::tidy(fit_p270, conf.level=0.8, conf.method="HPDinterval")
+summary(ricker_p270)
+summary(ricker_p270, prob=0.8)$fixed
+plot(ricker_p270,ask = F)
+bayes_R2(ricker_p270)
+sm_p270 <- broom.mixed::tidy(ricker_p270, conf.level=0.8, conf.method="HPDinterval")
 
-topt_p270_cc <- brms::posterior_summary(fixef(fit_p270, summary = F)[,'b_Intercept']-
-                                          fixef(fit_p270, summary = F)[,'d_Intercept']-
+topt_p270_cc <- brms::posterior_summary(fixef(ricker_p270, summary = F)[,'b_Intercept']-
+                                          fixef(ricker_p270, summary = F)[,'d_Intercept']-
                                           273.15,
                                         prob=c(0.1,0.9))
-topt_p270_cw <- brms::posterior_summary(fixef(fit_p270, summary = F)[,'b_Intercept']-
-                                          fixef(fit_p270, summary = F)[,'d_Intercept']-
+topt_p270_cw <- brms::posterior_summary(fixef(ricker_p270, summary = F)[,'b_Intercept']-
+                                          fixef(ricker_p270, summary = F)[,'d_Intercept']-
                                           273.15+
-                                          fixef(fit_p270, summary = F)[,'bcw_Intercept'], 
+                                          fixef(ricker_p270, summary = F)[,'bcw_Intercept'], 
                                         prob=c(0.1,0.9))
-topt_p270_wc <- brms::posterior_summary(fixef(fit_p270, summary = F)[,'b_Intercept']-
-                                          fixef(fit_p270, summary = F)[,'d_Intercept']-
+topt_p270_wc <- brms::posterior_summary(fixef(ricker_p270, summary = F)[,'b_Intercept']-
+                                          fixef(ricker_p270, summary = F)[,'d_Intercept']-
                                           273.15+
-                                          fixef(fit_p270, summary = F)[,'bwc_Intercept'], 
+                                          fixef(ricker_p270, summary = F)[,'bwc_Intercept'], 
                                         prob=c(0.1,0.9))
-topt_p270_ww <- brms::posterior_summary(fixef(fit_p270, summary = F)[,'b_Intercept']-
-                                          fixef(fit_p270, summary = F)[,'d_Intercept']-
+topt_p270_ww <- brms::posterior_summary(fixef(ricker_p270, summary = F)[,'b_Intercept']-
+                                          fixef(ricker_p270, summary = F)[,'d_Intercept']-
                                           273.15+
-                                          fixef(fit_p270, summary = F)[,'bww_Intercept'], 
+                                          fixef(ricker_p270, summary = F)[,'bww_Intercept'], 
                                         prob=c(0.1,0.9))
+brms::loo(ricker_p270)
 
 #*****************************************************************************
 # Fit ricker function Photo 505 
@@ -96,7 +97,7 @@ f <- bf(P505~(a+acw*cw+awc*wc+aww*ww)*(Tk+d)*
         nl=TRUE)
 make_stancode(f, prior=bprior, family=gaussian(),
               data=dat_fci)
-fit_p505 <- brm(f,
+ricker_p505 <- brm(f,
                 data = dat_fci, 
                 prior = bprior, 
                 algorithm = 'sampling',
@@ -105,32 +106,33 @@ fit_p505 <- brm(f,
                 # chains = 3,
                 # iter = 250
 )
-summary(fit_p505,prob=c(0.8))$fixed
-plot(fit_p505, ask=F)
-bayes_R2(fit_p505)
-prior_summary(fit_p505)
+summary(ricker_p505,prob=c(0.8))$fixed
+plot(ricker_p505, ask=F)
+bayes_R2(ricker_p505)
+prior_summary(ricker_p505)
 
-sm_p505 <- broom.mixed::tidy(fit_p505, conf.level=0.8, conf.method="HPDinterval")
+sm_p505 <- broom.mixed::tidy(ricker_p505, conf.level=0.8, conf.method="HPDinterval")
 
-topt_p505_cc <- brms::posterior_summary(fixef(fit_p505, summary = F)[,'b_Intercept']-
-                                          fixef(fit_p505, summary = F)[,'d_Intercept']-
+topt_p505_cc <- brms::posterior_summary(fixef(ricker_p505, summary = F)[,'b_Intercept']-
+                                          fixef(ricker_p505, summary = F)[,'d_Intercept']-
                                           273.15,
                                         prob=c(0.1,0.9))
-topt_p505_cw <- brms::posterior_summary(fixef(fit_p505, summary = F)[,'b_Intercept']-
-                                          fixef(fit_p505, summary = F)[,'d_Intercept']-
+topt_p505_cw <- brms::posterior_summary(fixef(ricker_p505, summary = F)[,'b_Intercept']-
+                                          fixef(ricker_p505, summary = F)[,'d_Intercept']-
                                           273.15+
-                                          fixef(fit_p505, summary = F)[,'bcw_Intercept'], 
+                                          fixef(ricker_p505, summary = F)[,'bcw_Intercept'], 
                                         prob=c(0.1,0.9))
-topt_p505_wc <- brms::posterior_summary(fixef(fit_p505, summary = F)[,'b_Intercept']-
-                                          fixef(fit_p505, summary = F)[,'d_Intercept']-
+topt_p505_wc <- brms::posterior_summary(fixef(ricker_p505, summary = F)[,'b_Intercept']-
+                                          fixef(ricker_p505, summary = F)[,'d_Intercept']-
                                           273.15+
-                                          fixef(fit_p505, summary = F)[,'bwc_Intercept'], 
+                                          fixef(ricker_p505, summary = F)[,'bwc_Intercept'], 
                                         prob=c(0.1,0.9))
-topt_p505_ww <- brms::posterior_summary(fixef(fit_p505, summary = F)[,'b_Intercept']-
-                                          fixef(fit_p505, summary = F)[,'d_Intercept']-
+topt_p505_ww <- brms::posterior_summary(fixef(ricker_p505, summary = F)[,'b_Intercept']-
+                                          fixef(ricker_p505, summary = F)[,'d_Intercept']-
                                           273.15+
-                                          fixef(fit_p505, summary = F)[,'bww_Intercept'], 
+                                          fixef(ricker_p505, summary = F)[,'bww_Intercept'], 
                                         prob=c(0.1,0.9))
+brms::loo(ricker_p505)
 
 
 # Plotting ----------------------------------------------------------------
@@ -151,7 +153,7 @@ vec_labels <- c("c.c"="Control",
 # FOR THE TOP ROW of P270 -------------------
 #************************************************************************
 p1 <-
-  fit_p270 %>% 
+  ricker_p270 %>% 
   as.data.frame() %>% 
   sample_n(100) %>% 
   as_tibble() %>% 
@@ -222,7 +224,7 @@ p1 <-
 # FOR THE MIDDLE ROW of P270 ---------------------
 #************************************************************************
 p2 <-
-  fit_p270 %>% 
+  ricker_p270 %>% 
   as.data.frame() %>% 
   sample_n(100) %>% 
   as_tibble() %>% 
@@ -292,7 +294,7 @@ p2 <-
 #************************************************************************
 # FOR THE BOTTOM ROW of P270 -------------------------
 #************************************************************************
-p3 <-   fit_p270 %>% 
+p3 <-   ricker_p270 %>% 
   as.data.frame() %>% 
   sample_n(100) %>% 
   as_tibble() %>% 
@@ -369,7 +371,7 @@ ggsave(p1/p2/p3,
 # FOR THE TOP ROW of P505 --------------------------------------
 #************************************************************************
 p4 <-
-  fit_p505 %>% 
+  ricker_p505 %>% 
   as.data.frame() %>% 
   sample_n(100) %>% 
   as_tibble() %>% 
@@ -434,7 +436,7 @@ p4 <-
 # FOR THE MIDDLE ROW of P505 ----------------------
 #************************************************************************
 p5 <-
-  fit_p505 %>% 
+  ricker_p505 %>% 
   as.data.frame() %>% 
   sample_n(100) %>% 
   as_tibble() %>% 
@@ -504,7 +506,7 @@ p5 <-
 #************************************************************************
 # FOR THE BOTTOM ROW of P505 -----------------------------
 #************************************************************************
-p6 <- fit_p505 %>% 
+p6 <- ricker_p505 %>% 
   as.data.frame() %>% 
   sample_n(100) %>% 
   as_tibble() %>% 
@@ -555,7 +557,7 @@ p6 <- fit_p505 %>%
                      # parse("paste(Control %->% \" Treatment\")"))
   )+
   # 
-  # fit_p505 %>% 
+  # ricker_p505 %>% 
   # as.data.frame() %>% 
   # sample_n(100) %>% 
   # as_tibble() %>% 

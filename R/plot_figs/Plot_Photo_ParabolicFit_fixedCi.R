@@ -44,7 +44,7 @@ f <- bf(P270~kopt+kcw*cw+kwc*wc+kww*ww-b*(Tk-(Topt+Tcw*cw+Twc*wc+Tww*ww))**2,
 make_stancode(f, prior=bprior, family=gaussian(),
               data=dat_fci)
 
-fit_p270 <- brm(f,
+parabolic_p270 <- brm(f,
                 data = dat_fci, 
                 prior = bprior, 
                 # sample_prior = 'only'
@@ -55,10 +55,21 @@ fit_p270 <- brm(f,
                 # iter = 250
 )
 
-summary(fit_p270, prob=0.8)$fixed
-plot(fit_p270,ask = F)
-bayes_R2(fit_p270)
-sm_p270 <- broom.mixed::tidy(fit_p270, conf.level=0.8, conf.method="HPDinterval")
+summary(parabolic_p270, prob=0.8)$fixed
+plot(parabolic_p270,ask = F)
+bayes_R2(parabolic_p270)
+sm_p270 <- broom.mixed::tidy(parabolic_p270, conf.level=0.8, conf.method="HPDinterval")
+brms::loo(parabolic_p270)
+
+parabolic_topt_p270_cc <- brms::posterior_summary(fixef(parabolic_p270, summary = F)[,'Topt_Intercept']-273.15,
+                                        prob=c(0.1,0.9))
+parabolic_topt_p270_cw <- brms::posterior_summary(fixef(parabolic_p270, summary = F)[,'Tcw_Intercept'],
+                                                  prob=c(0.1,0.9))
+parabolic_topt_p270_wc <- brms::posterior_summary(fixef(parabolic_p270, summary = F)[,'Twc_Intercept'],
+                                                  prob=c(0.1,0.9))
+parabolic_topt_p270_ww <- brms::posterior_summary(fixef(parabolic_p270, summary = F)[,'Tww_Intercept'],
+                                                  prob=c(0.1,0.9))
+
 
 #*****************************************************************************
 # Fit Parabolic function Photo 505 
@@ -92,7 +103,7 @@ f <- bf(P505~kopt+kcw*cw+kwc*wc+kww*ww-b*(Tk-(Topt+Tcw*cw+Twc*wc+Tww*ww))**2,
 make_stancode(f, prior=bprior, family=gaussian(),
               data=dat_fci)
 
-fit_p505 <- brm(f,
+parabolic_p505 <- brm(f,
                 data = dat_fci, 
                 prior = bprior, 
                 # sample_prior = 'only'
@@ -102,12 +113,13 @@ fit_p505 <- brm(f,
                 # chains = 3,
                 # iter = 250
 )
-summary(fit_p505,prob=c(0.8))$fixed
-plot(fit_p505, ask=F)
-bayes_R2(fit_p505)
-prior_summary(fit_p505)
+summary(parabolic_p505,prob=c(0.8))$fixed
+plot(parabolic_p505, ask=F)
+bayes_R2(parabolic_p505)
+prior_summary(parabolic_p505)
 
-sm_p505 <- broom.mixed::tidy(fit_p505, conf.level=0.8, conf.method="HPDinterval")
+sm_p505 <- broom.mixed::tidy(parabolic_p505, conf.level=0.8, conf.method="HPDinterval")
+brms::loo(parabolic_p505)
 
 
 
@@ -129,7 +141,7 @@ vec_labels <- c("c.c"="Control",
 # FOR THE TOP ROW of P270 -------------------
 #************************************************************************
 
-p1 <- fit_p270 %>% 
+p1 <- parabolic_p270 %>% 
   as.data.frame() %>% 
   sample_n(100) %>% 
   as_tibble() %>% 
@@ -195,7 +207,7 @@ p1 <- fit_p270 %>%
 #************************************************************************
 # FOR THE MIDDLE ROW of P270 ---------------------
 #************************************************************************
-p2 <- fit_p270 %>% 
+p2 <- parabolic_p270 %>% 
   as.data.frame() %>% 
   sample_n(100) %>% 
   as_tibble() %>% 
@@ -270,7 +282,7 @@ p2 <- fit_p270 %>%
 #************************************************************************
 # FOR THE BOTTOM ROW of P270 -------------------------
 #************************************************************************
-p3 <- fit_p270 %>% 
+p3 <- parabolic_p270 %>% 
   as.data.frame() %>% 
   sample_n(100) %>% 
   as_tibble() %>% 
@@ -360,7 +372,7 @@ ggsave(p1/p2/p3,
 # FOR THE TOP ROW of P505 --------------------------------------
 #************************************************************************
 
-p4 <- fit_p505 %>% 
+p4 <- parabolic_p505 %>% 
   as.data.frame() %>% 
   sample_n(100) %>% 
   as_tibble() %>% 
@@ -426,7 +438,7 @@ p4 <- fit_p505 %>%
 #************************************************************************
 # FOR THE MIDDLE ROW of P505 ----------------------
 #************************************************************************
-p5 <- fit_p505 %>% 
+p5 <- parabolic_p505 %>% 
   as.data.frame() %>% 
   sample_n(100) %>% 
   as_tibble() %>% 
@@ -501,7 +513,7 @@ p5 <- fit_p505 %>%
 #************************************************************************
 # FOR THE BOTTOM ROW of P505 -----------------------------
 #************************************************************************
-p6 <- fit_p505 %>% 
+p6 <- parabolic_p505 %>% 
   as.data.frame() %>% 
   sample_n(100) %>% 
   as_tibble() %>% 
