@@ -1,7 +1,10 @@
 library(tidyverse); library(bayesplot);
 library(rstan); library(brms); library(nls.multstart)
-options(mc.cores = parallel::detectCores()-1)
+options(mc.cores = parallel::detectCores()-1, 
+        pillar.sigfig=3)
+options(pillar.sigfig = 5)
 set.seed(1); 
+
 
 dat400 <- read_csv("data/P400.2904.csv")
 dat800 <- read_csv("data/P800.2904.csv")
@@ -23,7 +26,7 @@ dat800 <- dat800 %>%
   mutate(p2_w = ifelse(Treat %in% c("c.w","w.w"), 1,0))
 
 #*****************************************************************************
-# Fit Parabolic function Photo 400 
+# Fit Parabolic function Photo 400 ------------------------------------------
 #*****************************************************************************
 np400_2 <- nls_multstart(Photo~ (kopt+k_cw*cw+k_wc*wc+k_ww*ww) - 
                            b*(Tk-(Topt+Topt_cw*cw+Topt_wc*wc+Topt_ww*ww))**2, 
@@ -54,7 +57,7 @@ f <- bf(Photo~kopt+kcw*cw+kwc*wc+kww*ww-b*(Tk-(Topt+Tcw*cw+Twc*wc+Tww*ww))**2,
 make_stancode(f, prior=bprior, family=gaussian(),
               data=dat400)
 
-fit_p400 <- brm(f,
+parabolic_p400 <- brm(f,
                data = dat400, 
                prior = bprior, 
                # sample_prior = 'only'
@@ -64,14 +67,18 @@ fit_p400 <- brm(f,
                # chains = 3,
                # iter = 250
 )
+write_rds(parabolic_p400, file = paste0("outputs/parr_parabolic_p400_",Sys.Date(),".rds"))
+parabolic_p400
+summary(parabolic_p400, prob=0.8)$fixed
+plot(parabolic_p400,ask = F)
+bayes_R2(parabolic_p400)
+sm_p400 <- broom.mixed::tidy(parabolic_p400, conf.level=0.8, conf.method="HPDinterval")
+sm_p400
+brms::pp_check(parabolic_p400, nsamples=100)
 
-summary(fit_p400, prob=0.8)$fixed
-plot(fit_p400,ask = F)
-bayes_R2(fit_p400)
-sm_p400 <- broom.mixed::tidy(fit_p400, conf.level=0.8, conf.method="HPDinterval")
 
 #*****************************************************************************
-# Fit Parabolic function Photo 800 
+# Fit Parabolic function Photo 800 -------------------------------------------
 #*****************************************************************************
 np800_2 <- nls_multstart(Photo~ (kopt+k_cw*cw+k_wc*wc+k_ww*ww) - 
                            b*(Tk-(Topt+Topt_cw*cw+Topt_wc*wc+Topt_ww*ww))**2, 
@@ -102,7 +109,7 @@ f <- bf(Photo~kopt+kcw*cw+kwc*wc+kww*ww-b*(Tk-(Topt+Tcw*cw+Twc*wc+Tww*ww))**2,
 make_stancode(f, prior=bprior, family=gaussian(),
               data=dat800)
 
-fit_p800 <- brm(f,
+parabolic_p800 <- brm(f,
                 data = dat800, 
                 prior = bprior, 
                 # sample_prior = 'only'
@@ -112,12 +119,14 @@ fit_p800 <- brm(f,
                 # chains = 3,
                 # iter = 250
 )
-summary(fit_p800,prob=c(0.8))$fixed
-plot(fit_p800, ask=F)
-bayes_R2(fit_p800)
-prior_summary(fit_p800)
+write_rds(parabolic_p800, file = paste0("outputs/parr_parabolic_p800_",Sys.Date(),".rds"))
+parabolic_p800
+summary(parabolic_p800,prob=c(0.8))$fixed
+plot(parabolic_p800, ask=F)
+bayes_R2(parabolic_p800)
+prior_summary(parabolic_p800)
 
-sm_p800 <- broom.mixed::tidy(fit_p800, conf.level=0.8, conf.method="HPDinterval")
+sm_p800 <- broom.mixed::tidy(parabolic_p800, conf.level=0.8, conf.method="HPDinterval")
 
 
 
@@ -139,7 +148,7 @@ vec_labels <- c("c.c"="Control",
 # FOR THE TOP ROW of P400 -------------------
 #************************************************************************
 
-p1 <- fit_p400 %>% 
+p1 <- parabolic_p400 %>% 
   as.data.frame() %>% 
   sample_n(100) %>% 
   as_tibble() %>% 
@@ -205,7 +214,7 @@ p1 <- fit_p400 %>%
 #************************************************************************
 # FOR THE MIDDLE ROW of P400 ---------------------
 #************************************************************************
-p2 <- fit_p400 %>% 
+p2 <- parabolic_p400 %>% 
   as.data.frame() %>% 
   sample_n(100) %>% 
   as_tibble() %>% 
@@ -280,7 +289,7 @@ p2 <- fit_p400 %>%
 #************************************************************************
 # FOR THE BOTTOM ROW of P400 -------------------------
 #************************************************************************
-p3 <- fit_p400 %>% 
+p3 <- parabolic_p400 %>% 
   as.data.frame() %>% 
   sample_n(100) %>% 
   as_tibble() %>% 
@@ -370,7 +379,7 @@ ggsave(p1/p2/p3,
 # FOR THE TOP ROW of P800 --------------------------------------
 #************************************************************************
 
-p4 <- fit_p800 %>% 
+p4 <- parabolic_p800 %>% 
   as.data.frame() %>% 
   sample_n(100) %>% 
   as_tibble() %>% 
@@ -436,7 +445,7 @@ p4 <- fit_p800 %>%
 #************************************************************************
 # FOR THE MIDDLE ROW of P800 ----------------------
 #************************************************************************
-p5 <- fit_p800 %>% 
+p5 <- parabolic_p800 %>% 
   as.data.frame() %>% 
   sample_n(100) %>% 
   as_tibble() %>% 
@@ -511,7 +520,7 @@ p5 <- fit_p800 %>%
 #************************************************************************
 # FOR THE BOTTOM ROW of P800 -----------------------------
 #************************************************************************
-p6 <- fit_p800 %>% 
+p6 <- parabolic_p800 %>% 
   as.data.frame() %>% 
   sample_n(100) %>% 
   as_tibble() %>% 

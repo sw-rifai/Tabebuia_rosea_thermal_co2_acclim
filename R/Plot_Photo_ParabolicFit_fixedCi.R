@@ -54,6 +54,7 @@ parabolic_p270 <- brm(f,
                 # chains = 3,
                 # iter = 250
 )
+write_rds(parabolic_p270, file = paste0("outputs/parr_parabolic_p270_",Sys.Date(),".rds"))
 
 summary(parabolic_p270, prob=0.8)$fixed
 plot(parabolic_p270,ask = F)
@@ -113,6 +114,8 @@ parabolic_p505 <- brm(f,
                 # chains = 3,
                 # iter = 250
 )
+write_rds(parabolic_p505, file = paste0("outputs/parr_parabolic_p505_",Sys.Date(),".rds"))
+
 summary(parabolic_p505,prob=c(0.8))$fixed
 plot(parabolic_p505, ask=F)
 bayes_R2(parabolic_p505)

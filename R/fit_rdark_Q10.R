@@ -1,3 +1,4 @@
+library(tidyverse)
 dat_rd <- read_csv("data/Rdark_by_Plant.csv")
 names(dat_rd) <- tolower(names(dat_rd))
 # dat_rd %>% 

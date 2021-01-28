@@ -13,21 +13,22 @@ dat_all <- dat_all %>%
          wc=ifelse(Treat=='w.c',1,0), 
          ww=ifelse(Treat=='w.w',1,0))
 
+# Vcmax ~ kopt*(Hd*exp( (Ha*(Tk-Topt))/(Tk*R*Topt) ))
 
 # Fit Vcmax ---------------------------------------------------------------
 bprior_v <- 
-  prior(normal(237 , 10), nlpar = kopt, lb=100, ub=400)+
-  prior(normal( 0,1 ), nlpar = kwc,  lb=-30, ub=30)+
-  prior(normal( 0,1 ), nlpar = kcw, lb=-30, ub=30)+
-  prior(normal(0,1), nlpar = kww, lb=-30,ub=30)+
-  prior(normal(310,10), nlpar = Topt,  lb=273, ub=330)+
-  prior(normal( 0,1 ), nlpar = Tcw,  lb=-10, ub=10)+
-  prior(normal( 0,1 ), nlpar = Twc, lb=-10, ub=10)+
-  prior(normal( 0,1 ), nlpar = Tww, lb=-10, ub=10)+
-  prior(normal( 75,10 ), nlpar = Ha,  lb=10, ub=150)+
-  prior(normal( 0,1 ), nlpar = Hawc,  lb=-20, ub=20)+
-  prior(normal( 0,1 ), nlpar = Hacw, lb=-20, ub=20)+
-  prior(normal( 0,1 ), nlpar = Haww, lb=-20, ub=20)
+  prior(normal(250 , 100), nlpar = kopt, lb=25, ub=500)+
+  prior(normal( 0,100), nlpar = kwc,  lb=-250, ub=250)+
+  prior(normal( 0,100), nlpar = kcw, lb=-250, ub=250)+
+  prior(normal(0,100), nlpar = kww, lb=-250, ub=250)+
+  prior(normal(310,10), nlpar = Topt,  lb=290, ub=335)+
+  prior(normal( 0,2 ), nlpar = Tcw,  lb=-10, ub=10)+
+  prior(normal( 0,2 ), nlpar = Twc, lb=-10, ub=10)+
+  prior(normal( 0,2 ), nlpar = Tww, lb=-10, ub=10)+
+  prior(normal( 75,20 ), nlpar = Ha,  lb=25, ub=150)+
+  prior(normal( 0,20 ), nlpar = Hawc,  lb=-25, ub=25)+
+  prior(normal( 0,20 ), nlpar = Hacw, lb=-25, ub=25)+
+  prior(normal( 0,20 ), nlpar = Haww, lb=-25, ub=25)
 
 f_v <- bf(Vcmax ~ 
       (kopt + kcw*cw + kwc*wc + kww*ww) * 
@@ -51,7 +52,7 @@ parr_vcmax <- brm(f_v,
            algorithm = 'sampling',
            control = list(adapt_delta=0.999)
 )
-
+write_rds(parr_vcmax, file = paste0("outputs/parr_vcmax_",Sys.Date(),".rds"))
 parr_vcmax
 plot(parr_vcmax)
 pp_check(parr_vcmax, nsamples = 30)
@@ -68,21 +69,45 @@ topt_vcmax_cw <- brms::posterior_summary(fixef(parr_vcmax, summary = F)[,'Tcw_In
 topt_vcmax_ww <- brms::posterior_summary(fixef(parr_vcmax, summary = F)[,'Tww_Intercept'],
                                          prob=c(0.1,0.9))
 
+# Vcmax: Calculate delta S entropy estimates per treatment -------------------------------------
+# Control 
+fixef(parr_vcmax, summary = F) %>% as_tibble() %>%
+  mutate(entropy = 1000*200/(Topt_Intercept) + 8.3145*log(1000*Ha_Intercept/(1000*200-1000*Ha_Intercept))) %>%
+  pull(entropy) %>% quantile(., c(0.1,0.5,0.9))
+
+# Control -> Treatment
+fixef(parr_vcmax, summary = F) %>% as_tibble() %>%
+  mutate(entropy = 1000*200/(Topt_Intercept+Tcw_Intercept) + 
+           8.3145*log((1000*Ha_Intercept+Hacw_Intercept)/(1000*200-1000*(Ha_Intercept+Hacw_Intercept)))) %>%
+  pull(entropy) %>% quantile(., c(0.1,0.5,0.9))
+
+# Treatment 
+fixef(parr_vcmax, summary = F) %>% as_tibble() %>%
+  mutate(entropy = 1000*200/(Topt_Intercept+Tww_Intercept) + 
+           8.3145*log((1000*Ha_Intercept+Haww_Intercept)/(1000*200-1000*(Ha_Intercept+Haww_Intercept)))) %>%
+  pull(entropy) %>% quantile(., c(0.1,0.5,0.9))
+
+# Treatment 
+fixef(parr_vcmax, summary = F) %>% as_tibble() %>%
+  mutate(entropy = 1000*200/(Topt_Intercept+Twc_Intercept) + 
+           8.3145*log((1000*Ha_Intercept+Hawc_Intercept)/(1000*200-1000*(Ha_Intercept+Hawc_Intercept)))) %>%
+  pull(entropy) %>% quantile(., c(0.1,0.5,0.9))
+
 
 # Fit Jmax ---------------------------------------------------------------
 bprior_j <- 
-  prior(normal(237 , 10), nlpar = kopt, lb=100, ub=400)+
-  prior(normal( 0,1 ), nlpar = kwc,  lb=-30, ub=30)+
-  prior(normal( 0,1 ), nlpar = kcw, lb=-30, ub=30)+
-  prior(normal(0,1), nlpar = kww, lb=-30,ub=30)+
-  prior(normal(310,10), nlpar = Topt,  lb=273, ub=330)+
-  prior(normal( 0,1 ), nlpar = Tcw,  lb=-10, ub=10)+
-  prior(normal( 0,1 ), nlpar = Twc, lb=-10, ub=10)+
-  prior(normal( 0,1 ), nlpar = Tww, lb=-10, ub=10)+
-  prior(normal( 75,10 ), nlpar = Ha,  lb=10, ub=150)+
-  prior(normal( 0,1 ), nlpar = Hawc,  lb=-20, ub=20)+
-  prior(normal( 0,1 ), nlpar = Hacw, lb=-20, ub=20)+
-  prior(normal( 0,1 ), nlpar = Haww, lb=-20, ub=20)
+  prior(normal(250 , 100), nlpar = kopt, lb=25, ub=500)+
+  prior(normal( 0,100), nlpar = kwc,  lb=-250, ub=250)+
+  prior(normal( 0,100), nlpar = kcw, lb=-250, ub=250)+
+  prior(normal(0,100), nlpar = kww, lb=-250, ub=250)+
+  prior(normal(310,10), nlpar = Topt,  lb=290, ub=335)+
+  prior(normal( 0,2 ), nlpar = Tcw,  lb=-10, ub=10)+
+  prior(normal( 0,2 ), nlpar = Twc, lb=-10, ub=10)+
+  prior(normal( 0,2 ), nlpar = Tww, lb=-10, ub=10)+
+  prior(normal( 75,20 ), nlpar = Ha,  lb=25, ub=150)+
+  prior(normal( 0,20 ), nlpar = Hawc,  lb=-25, ub=25)+
+  prior(normal( 0,20 ), nlpar = Hacw, lb=-25, ub=25)+
+  prior(normal( 0,20 ), nlpar = Haww, lb=-25, ub=25)
 
 f_j <- bf(Jmax ~ 
             (kopt + kcw*cw + kwc*wc + kww*ww) * 
@@ -106,6 +131,7 @@ parr_jmax <- brm(f_j,
                   algorithm = 'sampling',
                   control = list(adapt_delta=0.999)
 )
+write_rds(parr_jmax, file = paste0("outputs/parr_jmax_",Sys.Date(),".rds"))
 
 parr_jmax
 plot(parr_jmax)
@@ -121,6 +147,31 @@ topt_jmax_cw <- brms::posterior_summary(fixef(parr_jmax, summary = F)[,'Tcw_Inte
                                          prob=c(0.1,0.9))
 topt_jmax_ww <- brms::posterior_summary(fixef(parr_jmax, summary = F)[,'Tww_Intercept'],
                                          prob=c(0.1,0.9))
+
+# Jmax: Calculate delta S entropy estimates per treatment -------------------------------------
+# Control 
+fixef(parr_jmax, summary = F) %>% as_tibble() %>%
+  mutate(entropy = 1000*200/(Topt_Intercept) + 8.3145*log(1000*Ha_Intercept/(1000*200-1000*Ha_Intercept))) %>%
+  pull(entropy) %>% quantile(., c(0.1,0.5,0.9))
+
+# Control -> Treatment
+fixef(parr_jmax, summary = F) %>% as_tibble() %>%
+  mutate(entropy = 1000*200/(Topt_Intercept+Tcw_Intercept) + 
+           8.3145*log((1000*Ha_Intercept+Hacw_Intercept)/(1000*200-1000*(Ha_Intercept+Hacw_Intercept)))) %>%
+  pull(entropy) %>% quantile(., c(0.1,0.5,0.9))
+
+# Treatment 
+fixef(parr_jmax, summary = F) %>% as_tibble() %>%
+  mutate(entropy = 1000*200/(Topt_Intercept+Tww_Intercept) + 
+           8.3145*log((1000*Ha_Intercept+Haww_Intercept)/(1000*200-1000*(Ha_Intercept+Haww_Intercept)))) %>%
+  pull(entropy) %>% quantile(., c(0.1,0.5,0.9))
+
+# Treatment 
+fixef(parr_jmax, summary = F) %>% as_tibble() %>%
+  mutate(entropy = 1000*200/(Topt_Intercept+Twc_Intercept) + 
+           8.3145*log((1000*Ha_Intercept+Hawc_Intercept)/(1000*200-1000*(Ha_Intercept+Hawc_Intercept)))) %>%
+  pull(entropy) %>% quantile(., c(0.1,0.5,0.9))
+
 
 # Plotting helpers --------------------------------------------------------
 fn <- function(x){
@@ -291,7 +342,7 @@ p2 <-
   labs(x=NULL); p2
 
 #************************************************************************
-# FOR THE Bottom ROW of Vcax -------------------
+# FOR THE Bottom ROW of Vcmax -------------------
 #************************************************************************
 p3 <-
   parr_vcmax %>% 
@@ -371,7 +422,6 @@ p3 <-
         plot.margin = margin(l=20))+
   labs(x=NULL); p3
 
-p1/p2/p3
 
 # Plot Jcmax --------------------------------------------------------------
 #************************************************************************
@@ -447,10 +497,10 @@ p4 <-
   labs(x=NULL); p4
 
 #************************************************************************
-# FOR THE MIDDLE ROW of Vcmax -------------------
+# FOR THE MIDDLE ROW of Jmax -------------------
 #************************************************************************
 p5 <-
-  parr_vcmax %>% 
+  parr_jmax %>% 
   as.data.frame() %>% 
   sample_n(100) %>% 
   as_tibble() %>% 
@@ -460,7 +510,7 @@ p5 <-
                  Topt,Twc,Tcw,Tww, 
                  Ha,Hacw,Hawc,Haww),
          Tk=seq(295,320,0.1), cw=c(0,1), wc=c(0,1), ww=c(0,1)) %>% 
-  mutate(Vcmax = 
+  mutate(Jmax = 
            (kopt + kcw*cw + kwc*wc + kww*ww) * 
            ((200 * (2.718282^(((Ha + Hacw*cw + Hawc*wc + Haww*ww)*
                                  (Tk-(Topt + Tcw*cw + Twc*wc +Tww*ww)))/
@@ -477,7 +527,7 @@ p5 <-
   mutate(lp_Treat=paste(lp,Treat)) %>% 
   filter(Treat %in% c("c.c","c.w")) %>%
   mutate(Tc=Tk-273.15) %>% 
-  ggplot(data=.,aes(Tc, Vcmax, color=Treat, group=lp_Treat))+
+  ggplot(data=.,aes(Tc, Jmax, color=Treat, group=lp_Treat))+
   geom_line(alpha=0.05)+
   geom_point(data=dat_all %>% 
                filter(Treat%in%c("c.c")) %>% 
@@ -608,10 +658,9 @@ p6 <-
         plot.margin = margin(l=20))+
   labs(x=NULL); p6
 
-p4/p5/p6
 
 
-(p1/p2/p3)|(p4/p5/p6)
+# (p1/p2/p3)|(p4/p5/p6)
 ggsave((p1/p2/p3)|(p4/p5/p6),
        filename = paste0("figures/vcmax_jmax_brms_",Sys.Date(),".png"),
        width = 2*120, height=3*100, units='mm')
