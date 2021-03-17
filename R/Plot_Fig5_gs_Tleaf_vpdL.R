@@ -1,14 +1,14 @@
 library(tidyverse)
 library(ggpubr)
 
-p400<-read_csv("data/P400.150321.csv") %>% 
+p400<-read_csv("data/P400.final.csv") %>% 
   mutate(Tk = Tleaf+273.15) %>% 
   mutate(cc=ifelse(Treat=='c.c',1,0), 
          cw=ifelse(Treat=='c.w',1,0), 
          wc=ifelse(Treat=='w.c',1,0), 
          ww=ifelse(Treat=='w.w',1,0)) %>% 
   mutate(ca=400)
-p800<-read_csv("data/P800.150321.csv") %>% 
+p800<-read_csv("data/P800.final.csv") %>% 
   mutate(Tk = Tleaf+273.15) %>% 
   mutate(cc=ifelse(Treat=='c.c',1,0), 
          cw=ifelse(Treat=='c.w',1,0), 
